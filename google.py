@@ -24,6 +24,7 @@ class GoogleScraper:
         password = os.getenv('SMARTPROXY_PASSWORD')
         proxy = f"http://{username}:{password}@dc.smartproxy.com:10000"
         self.proxies = {"http": proxy, "https": proxy}
+        self.skip_values_in_website = ['firmen', 'northdata', 'linkedin.com']
 
     def search(self, query: str, linkedin: bool = False, keep_results: bool = True) -> dict:
         print(f'[+] Searching for {query}...')
@@ -34,7 +35,9 @@ class GoogleScraper:
             'business_info': self.extract_business_info(query, soup, linkedin)
         }
         if data['results']:
-            data['business_info']['website'] = data['results'][0]['link'].split('//')[-1].split('/')[0]
+            website = data['results'][0]['link'].split('//')[-1].split('/')[0]
+            if not any(x in website for x in self.skip_values_in_website):
+                data['business_info']['website'] = website
         if not keep_results:
             data['results'] = None
         print('    Total datapoints extracted:', len([x for x in data['business_info'] if data['business_info'][x]]))
@@ -45,7 +48,7 @@ class GoogleScraper:
         url = f"https://www.google.com/search?client=safari&rls=en&q={_query}&ie=UTF-8&oe=UTF-8"
         response = requests.get(url, headers=self.headers, proxies=self.proxies)
         if response.status_code != 200:
-            print(f"   Failed to fetch results for {url}")
+            # print(f"   Failed to fetch results for {url}")
             time.sleep(2)
             return self.make_request(query)
         return BeautifulSoup(response.text, 'html.parser')
